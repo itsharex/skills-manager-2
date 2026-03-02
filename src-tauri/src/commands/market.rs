@@ -263,193 +263,202 @@ fn parse_agent_skills_index(
 }
 
 #[tauri::command]
-pub fn search_marketplaces(
+pub async fn search_marketplaces(
     query: String,
     limit: u64,
     offset: u64,
     api_keys: HashMap<String, String>,
     enabled_markets: HashMap<String, bool>,
 ) -> Result<RemoteSkillsViewResponse, String> {
-    let mut skills: Vec<RemoteSkillView> = Vec::new();
-    let mut total: u64 = 0;
-    let mut market_statuses: Vec<MarketStatus> = Vec::new();
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut skills: Vec<RemoteSkillView> = Vec::new();
+        let mut total: u64 = 0;
+        let mut market_statuses: Vec<MarketStatus> = Vec::new();
 
-    let trimmed = query.trim();
-    let query_param = if trimmed.is_empty() {
-        String::new()
-    } else {
-        format!("q={}", urlencoding::encode(trimmed))
-    };
+        let trimmed = query.trim();
+        let query_param = if trimmed.is_empty() {
+            String::new()
+        } else {
+            format!("q={}", urlencoding::encode(trimmed))
+        };
 
-    let claude_market_id = "claude-plugins";
-    let claude_market_label = "Claude Plugins";
+        let claude_market_id = "claude-plugins";
+        let claude_market_label = "Claude Plugins";
 
-    if *enabled_markets.get(claude_market_id).unwrap_or(&true) {
-        let mut url = String::from("https://claude-plugins.dev/api/skills?");
-        if !query_param.is_empty() {
-            url.push_str(&query_param);
-            url.push('&');
-        }
-        url.push_str(&format!("limit={}&offset={}", limit, offset));
-
-        match download_bytes(
-            &url,
-            &[
-                ("Accept", "application/json"),
-                ("User-Agent", "skills-manager-gui/0.1"),
-            ],
-        ) {
-            Ok(buf) => {
-                if let Ok(parsed) = serde_json::from_slice::<RemoteSkillsResponse>(&buf) {
-                    total += parsed.total;
-                    skills.extend(parsed.skills.into_iter().map(|skill| {
-                        map_claude_skill(skill, claude_market_id, claude_market_label)
-                    }));
-                    market_statuses.push(MarketStatus {
-                        id: claude_market_id.to_string(),
-                        name: claude_market_label.to_string(),
-                        status: "online".to_string(),
-                        error: None,
-                    });
-                } else {
-                    market_statuses.push(MarketStatus {
-                        id: claude_market_id.to_string(),
-                        name: claude_market_label.to_string(),
-                        status: "error".to_string(),
-                        error: Some("Failed to parse response".to_string()),
-                    });
-                }
+        if *enabled_markets.get(claude_market_id).unwrap_or(&true) {
+            let mut url = String::from("https://claude-plugins.dev/api/skills?");
+            if !query_param.is_empty() {
+                url.push_str(&query_param);
+                url.push('&');
             }
-            Err(e) => {
-                println!("Error fetching from Claude Plugins: {}", e);
-                market_statuses.push(MarketStatus {
-                    id: claude_market_id.to_string(),
-                    name: claude_market_label.to_string(),
-                    status: "error".to_string(),
-                    error: Some(e),
-                });
-            }
-        }
-    } else {
-        market_statuses.push(MarketStatus {
-            id: claude_market_id.to_string(),
-            name: claude_market_label.to_string(),
-            status: "online".to_string(),
-            error: None,
-        });
-    }
-
-    let skillsllm_market_id = "skillsllm";
-    let skillsllm_market_label = "SkillsLLM";
-
-    if *enabled_markets.get(skillsllm_market_id).unwrap_or(&true) {
-        let skillsllm_page = (offset / limit).saturating_add(1);
-        let mut skillsllm_url = String::from("https://skillsllm.com/api/skills?");
-        if !query_param.is_empty() {
-            skillsllm_url.push_str(&format!("search={}&", urlencoding::encode(trimmed)));
-        }
-        skillsllm_url.push_str(&format!("page={}&limit={}", skillsllm_page, limit));
-
-        match download_bytes(
-            &skillsllm_url,
-            &[
-                ("Accept", "application/json"),
-                ("User-Agent", "skills-manager-gui/0.1"),
-            ],
-        ) {
-            Ok(buf) => {
-                if let Ok((parsed_skills, parsed_total)) =
-                    parse_skillsllm(&buf, skillsllm_market_id, skillsllm_market_label)
-                {
-                    total += parsed_total;
-                    skills.extend(parsed_skills);
-                    market_statuses.push(MarketStatus {
-                        id: skillsllm_market_id.to_string(),
-                        name: skillsllm_market_label.to_string(),
-                        status: "online".to_string(),
-                        error: None,
-                    });
-                } else {
-                    market_statuses.push(MarketStatus {
-                        id: skillsllm_market_id.to_string(),
-                        name: skillsllm_market_label.to_string(),
-                        status: "error".to_string(),
-                        error: Some("Failed to parse response".to_string()),
-                    });
-                }
-            }
-            Err(e) => {
-                println!("Error fetching from SkillsLLM: {}", e);
-                market_statuses.push(MarketStatus {
-                    id: skillsllm_market_id.to_string(),
-                    name: skillsllm_market_label.to_string(),
-                    status: "error".to_string(),
-                    error: Some(e),
-                });
-            }
-        }
-    } else {
-        market_statuses.push(MarketStatus {
-            id: skillsllm_market_id.to_string(),
-            name: skillsllm_market_label.to_string(),
-            status: "online".to_string(),
-            error: None,
-        });
-    }
-
-    let skillsmp_market_id = "skillsmp";
-    let skillsmp_market_label = "SkillsMP";
-
-    if *enabled_markets.get(skillsmp_market_id).unwrap_or(&false) {
-        if let Some(api_key) = api_keys.get(skillsmp_market_id).filter(|k| !k.is_empty()) {
-            let skillsmp_page = (offset / limit).saturating_add(1);
-            let skillsmp_url = format!(
-                "https://skillsmp.com/api/v1/skills/search?q={}&page={}&limit={}",
-                urlencoding::encode(trimmed),
-                skillsmp_page,
-                limit
-            );
-
-            let auth_header = format!("Bearer {}", api_key);
+            url.push_str(&format!("limit={}&offset={}", limit, offset));
 
             match download_bytes(
-                &skillsmp_url,
+                &url,
                 &[
                     ("Accept", "application/json"),
                     ("User-Agent", "skills-manager-gui/0.1"),
-                    ("Authorization", &auth_header),
                 ],
             ) {
                 Ok(buf) => {
-                    if let Ok((parsed_skills, parsed_total)) =
-                        parse_skillsmp(&buf, skillsmp_market_id, skillsmp_market_label)
-                    {
-                        total += parsed_total;
-                        skills.extend(parsed_skills);
+                    if let Ok(parsed) = serde_json::from_slice::<RemoteSkillsResponse>(&buf) {
+                        total += parsed.total;
+                        skills.extend(parsed.skills.into_iter().map(|skill| {
+                            map_claude_skill(skill, claude_market_id, claude_market_label)
+                        }));
                         market_statuses.push(MarketStatus {
-                            id: skillsmp_market_id.to_string(),
-                            name: skillsmp_market_label.to_string(),
+                            id: claude_market_id.to_string(),
+                            name: claude_market_label.to_string(),
                             status: "online".to_string(),
                             error: None,
                         });
                     } else {
                         market_statuses.push(MarketStatus {
-                            id: skillsmp_market_id.to_string(),
-                            name: skillsmp_market_label.to_string(),
+                            id: claude_market_id.to_string(),
+                            name: claude_market_label.to_string(),
                             status: "error".to_string(),
                             error: Some("Failed to parse response".to_string()),
                         });
                     }
                 }
                 Err(e) => {
-                    println!("Error fetching from SkillsMP: {}", e);
+                    println!("Error fetching from Claude Plugins: {}", e);
                     market_statuses.push(MarketStatus {
-                        id: skillsmp_market_id.to_string(),
-                        name: skillsmp_market_label.to_string(),
+                        id: claude_market_id.to_string(),
+                        name: claude_market_label.to_string(),
                         status: "error".to_string(),
                         error: Some(e),
                     });
                 }
+            }
+        } else {
+            market_statuses.push(MarketStatus {
+                id: claude_market_id.to_string(),
+                name: claude_market_label.to_string(),
+                status: "online".to_string(),
+                error: None,
+            });
+        }
+
+        let skillsllm_market_id = "skillsllm";
+        let skillsllm_market_label = "SkillsLLM";
+
+        if *enabled_markets.get(skillsllm_market_id).unwrap_or(&true) {
+            let skillsllm_page = (offset / limit).saturating_add(1);
+            let mut skillsllm_url = String::from("https://skillsllm.com/api/skills?");
+            if !query_param.is_empty() {
+                skillsllm_url.push_str(&format!("search={}&", urlencoding::encode(trimmed)));
+            }
+            skillsllm_url.push_str(&format!("page={}&limit={}", skillsllm_page, limit));
+
+            match download_bytes(
+                &skillsllm_url,
+                &[
+                    ("Accept", "application/json"),
+                    ("User-Agent", "skills-manager-gui/0.1"),
+                ],
+            ) {
+                Ok(buf) => {
+                    if let Ok((parsed_skills, parsed_total)) =
+                        parse_skillsllm(&buf, skillsllm_market_id, skillsllm_market_label)
+                    {
+                        total += parsed_total;
+                        skills.extend(parsed_skills);
+                        market_statuses.push(MarketStatus {
+                            id: skillsllm_market_id.to_string(),
+                            name: skillsllm_market_label.to_string(),
+                            status: "online".to_string(),
+                            error: None,
+                        });
+                    } else {
+                        market_statuses.push(MarketStatus {
+                            id: skillsllm_market_id.to_string(),
+                            name: skillsllm_market_label.to_string(),
+                            status: "error".to_string(),
+                            error: Some("Failed to parse response".to_string()),
+                        });
+                    }
+                }
+                Err(e) => {
+                    println!("Error fetching from SkillsLLM: {}", e);
+                    market_statuses.push(MarketStatus {
+                        id: skillsllm_market_id.to_string(),
+                        name: skillsllm_market_label.to_string(),
+                        status: "error".to_string(),
+                        error: Some(e),
+                    });
+                }
+            }
+        } else {
+            market_statuses.push(MarketStatus {
+                id: skillsllm_market_id.to_string(),
+                name: skillsllm_market_label.to_string(),
+                status: "online".to_string(),
+                error: None,
+            });
+        }
+
+        let skillsmp_market_id = "skillsmp";
+        let skillsmp_market_label = "SkillsMP";
+
+        if *enabled_markets.get(skillsmp_market_id).unwrap_or(&false) {
+            if let Some(api_key) = api_keys.get(skillsmp_market_id).filter(|k| !k.is_empty()) {
+                let skillsmp_page = (offset / limit).saturating_add(1);
+                let skillsmp_url = format!(
+                    "https://skillsmp.com/api/v1/skills/search?q={}&page={}&limit={}",
+                    urlencoding::encode(trimmed),
+                    skillsmp_page,
+                    limit
+                );
+
+                let auth_header = format!("Bearer {}", api_key);
+
+                match download_bytes(
+                    &skillsmp_url,
+                    &[
+                        ("Accept", "application/json"),
+                        ("User-Agent", "skills-manager-gui/0.1"),
+                        ("Authorization", &auth_header),
+                    ],
+                ) {
+                    Ok(buf) => {
+                        if let Ok((parsed_skills, parsed_total)) =
+                            parse_skillsmp(&buf, skillsmp_market_id, skillsmp_market_label)
+                        {
+                            total += parsed_total;
+                            skills.extend(parsed_skills);
+                            market_statuses.push(MarketStatus {
+                                id: skillsmp_market_id.to_string(),
+                                name: skillsmp_market_label.to_string(),
+                                status: "online".to_string(),
+                                error: None,
+                            });
+                        } else {
+                            market_statuses.push(MarketStatus {
+                                id: skillsmp_market_id.to_string(),
+                                name: skillsmp_market_label.to_string(),
+                                status: "error".to_string(),
+                                error: Some("Failed to parse response".to_string()),
+                            });
+                        }
+                    }
+                    Err(e) => {
+                        println!("Error fetching from SkillsMP: {}", e);
+                        market_statuses.push(MarketStatus {
+                            id: skillsmp_market_id.to_string(),
+                            name: skillsmp_market_label.to_string(),
+                            status: "error".to_string(),
+                            error: Some(e),
+                        });
+                    }
+                }
+            } else {
+                market_statuses.push(MarketStatus {
+                    id: skillsmp_market_id.to_string(),
+                    name: skillsmp_market_label.to_string(),
+                    status: "needs_key".to_string(),
+                    error: None,
+                });
             }
         } else {
             market_statuses.push(MarketStatus {
@@ -459,22 +468,17 @@ pub fn search_marketplaces(
                 error: None,
             });
         }
-    } else {
-        market_statuses.push(MarketStatus {
-            id: skillsmp_market_id.to_string(),
-            name: skillsmp_market_label.to_string(),
-            status: "needs_key".to_string(),
-            error: None,
-        });
-    }
 
-    Ok(RemoteSkillsViewResponse {
-        skills,
-        total,
-        limit,
-        offset,
-        market_statuses,
+        Ok(RemoteSkillsViewResponse {
+            skills,
+            total,
+            limit,
+            offset,
+            market_statuses,
+        })
     })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]

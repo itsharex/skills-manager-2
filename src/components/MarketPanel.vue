@@ -18,9 +18,11 @@ const props = defineProps<{
   marketStatuses: MarketStatus[];
   enabledMarkets: Record<string, boolean>;
   downloadQueue: DownloadTask[];
+  recentTaskStatus: Record<string, "download" | "update">;
 }>();
 
 const downloadingIds = computed(() => new Set(props.downloadQueue.map(t => t.id)));
+const actionState = (skill: RemoteSkill) => props.recentTaskStatus[skill.id] ?? null;
 
 defineEmits<{
   (e: "update:query", value: string): void;
@@ -78,18 +80,34 @@ const showSettings = ref(false);
             </div>
           </div>
           <template v-if="localSkillNameSet.has(skill.name.trim().toLowerCase())">
-            <button class="ghost" :disabled="downloadingIds.has(skill.id) || !skill.sourceUrl || !skill.sourceUrl.trim()" :title="(!skill.sourceUrl || !skill.sourceUrl.trim()) ? t('market.unavailable') : ''" @click="$emit('update', skill)">
-              {{ (!skill.sourceUrl || !skill.sourceUrl.trim()) ? t("market.unavailable") : (downloadingIds.has(skill.id) ? t("market.queued") : t("market.update")) }}
+            <button class="ghost" :disabled="downloadingIds.has(skill.id) || actionState(skill) === 'update' || !skill.sourceUrl || !skill.sourceUrl.trim()" :title="(!skill.sourceUrl || !skill.sourceUrl.trim()) ? t('market.unavailable') : ''" @click="$emit('update', skill)">
+              {{
+                (!skill.sourceUrl || !skill.sourceUrl.trim())
+                  ? t("market.unavailable")
+                  : downloadingIds.has(skill.id)
+                    ? t("market.queued")
+                    : actionState(skill) === "update"
+                      ? t("market.updated")
+                      : t("market.update")
+              }}
             </button>
           </template>
           <template v-else>
             <button 
               class="primary" 
-              :disabled="downloadingIds.has(skill.id) || !skill.sourceUrl || !skill.sourceUrl.trim()" 
+              :disabled="downloadingIds.has(skill.id) || actionState(skill) === 'download' || !skill.sourceUrl || !skill.sourceUrl.trim()" 
               :title="(!skill.sourceUrl || !skill.sourceUrl.trim()) ? t('market.unavailable') : ''"
               @click="$emit('download', skill)"
             >
-              {{ (!skill.sourceUrl || !skill.sourceUrl.trim()) ? t("market.unavailable") : (downloadingIds.has(skill.id) ? t("market.queued") : t("market.download")) }}
+              {{
+                (!skill.sourceUrl || !skill.sourceUrl.trim())
+                  ? t("market.unavailable")
+                  : downloadingIds.has(skill.id)
+                    ? t("market.queued")
+                    : actionState(skill) === "download"
+                      ? t("market.downloaded")
+                      : t("market.download")
+              }}
             </button>
           </template>
         </div>

@@ -4,8 +4,10 @@ import { useI18n } from "vue-i18n";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { i18n, supportedLocales, type SupportedLocale } from "../i18n";
 import { useUpdateStore } from "../composables/useUpdateStore";
+import { useToast } from "../composables/useToast";
 
 const { t } = useI18n();
+const toast = useToast();
 
 // Theme state
 type ThemeMode = "light" | "dark" | "system";
@@ -25,12 +27,22 @@ const {
   downloadProgress,
   downloaded,
   upToDate,
+  error,
   loadAppInfo,
   checkUpdate,
   downloadUpdate,
   installAndRestart,
   resetState,
 } = useUpdateStore();
+
+const handleCheckUpdate = async () => {
+  await checkUpdate();
+  if (error.value) {
+    toast.error(error.value);
+  } else if (upToDate.value) {
+    toast.info(t("settings.update.upToDate"));
+  }
+};
 
 // Apply theme to document
 const applyTheme = (mode: ThemeMode) => {
@@ -114,7 +126,7 @@ onMounted(async () => {
           <span class="version-badge">v{{ currentVersion }}</span>
         </div>
         <div class="about-actions">
-          <button class="ghost" @click="() => checkUpdate()" :disabled="checking">
+          <button class="ghost" @click="handleCheckUpdate" :disabled="checking">
             {{ checking ? t("settings.update.checking") || "..." : t("settings.about.checkUpdate") }}
           </button>
           <button class="ghost" @click="openGitHub">
@@ -135,7 +147,7 @@ onMounted(async () => {
       <div class="update-content">
         <div class="version-row">
           <span class="version-label">{{ currentVersion }}</span>
-          <button class="primary" @click="() => checkUpdate()" :disabled="checking || downloading">
+          <button class="primary" @click="handleCheckUpdate" :disabled="checking || downloading">
             {{ t("settings.update.checkForUpdates") }}
           </button>
         </div>

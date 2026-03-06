@@ -149,3 +149,9 @@ pub struct IdeDir {
 pub struct ImportRequest {
     pub source_path: String,
 }
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteLocalSkillRequest {
+    pub target_paths: Vec<String>,
+}

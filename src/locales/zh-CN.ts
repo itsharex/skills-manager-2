@@ -62,8 +62,10 @@ export default {
     emptyHint: "未找到匹配的技能。",
     meta: "作者 {author} • ⭐️ {stars} • ⬇️ {installs}",
     update: "更新",
+    updated: "已更新",
     updating: "正在更新...",
     download: "下载",
+    downloaded: "已下载",
     queued: "排队中",
     unavailable: "暂不可用",
     source: "来源：{source}",
@@ -72,10 +74,17 @@ export default {
   local: {
     title: "已有 Skills",
     hint: "导入本地 Skill 需要选择包含 SKILL.md 的 Skill 文件夹。",
+    total: "总数 {count}",
+    selectAll: "全选",
     scanning: "正在扫描本地 Skills...",
     emptyHint: "暂无本地 Skill，请尝试从市场下载。",
     install: "安装到编辑器",
+    installSelected: "批量安装到编辑器 ({count})",
     import: "导入本地 Skill",
+    deleteOne: "删除",
+    deleteSelected: "删除选中 ({count})",
+    deleteSelectedCount: "已选 {count} 个 Skill",
+    deleteAll: "全部删除",
     selectSkillDir: "选择 Skill 目录",
     processing: "处理中...",
     usedBy: "已关联 {ideList}",
@@ -84,6 +93,7 @@ export default {
   ide: {
     title: "IDE 浏览",
     switchHint: "切换 IDE 查看其技能列表。",
+    total: "当前列表 {count}",
     addHint: "添加自定义 IDE（名称 + 相对用户目录的 skills 路径）。",
     namePlaceholder: "IDE 名称",
     dirPlaceholder: "例如 .myide/skills",
@@ -105,8 +115,11 @@ export default {
   uninstallModal: {
     title: "确认卸载",
     hint: "将移除该 IDE 下的技能目录或软链接，无法恢复。",
+    deleteTitle: "确认删除本地 Skill",
+    deleteHint: "将从 Skills Manager 本地仓库删除所选 Skill，无法恢复。",
     cancel: "取消",
-    confirm: "确认卸载"
+    confirm: "确认卸载",
+    deleteConfirm: "确认删除"
   },
   loading: {
     title: "处理中"
@@ -117,6 +130,7 @@ export default {
     installed: "已安装至 {ide}",
     installing: "正在安装...",
     uninstalling: "正在卸载...",
+    deleting: "正在删除...",
     importing: "正在导入...",
     handled: "已处理 {linked} 个目标，跳过 {skipped} 个目标。",
     imported: "成功导入 {success} 个 Skill，失败 {failed} 个。"
@@ -128,6 +142,7 @@ export default {
     scanFailed: "扫描本地 Skill 失败。",
     installFailed: "安装失败。",
     uninstallFailed: "卸载失败。",
+    deleteFailed: "删除失败。",
     importFailed: "导入失败。",
     fillIde: "请填写编辑器名称和目录。",
     ideExists: "IDE 名称已存在",

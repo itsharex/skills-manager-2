@@ -61,9 +61,11 @@ export default {
     loadingHint: "Loading...",
     emptyHint: "No results",
     download: "Download",
+    downloaded: "Downloaded",
     downloading: "Downloading",
     queued: "In Queue",
     update: "Update",
+    updated: "Updated",
     updating: "Updating...",
     source: "Source: {source}",
     loadMore: "Load More",
@@ -72,10 +74,17 @@ export default {
   local: {
     title: "Local Skills",
     hint: "To import local skills, select the folder containing SKILL.md.",
+    total: "Total {count}",
+    selectAll: "Select all",
     scanning: "Scanning local skills...",
     emptyHint: "No local skills found. Try downloading some from the Market.",
     install: "Install to IDE",
+    installSelected: "Batch install to IDE ({count})",
     import: "Import Local Skill",
+    deleteOne: "Delete",
+    deleteSelected: "Delete selected ({count})",
+    deleteSelectedCount: "{count} skills selected",
+    deleteAll: "Delete all",
     selectSkillDir: "Select Skill Directory",
     processing: "Processing...",
     usedBy: "Linked to {ideList}",
@@ -84,6 +93,7 @@ export default {
   ide: {
     title: "IDE Browser",
     switchHint: "Switch IDE to view its skills.",
+    total: "{count} skills",
     addHint: "Add custom IDE (name + relative skills path).",
     namePlaceholder: "IDE name",
     dirPlaceholder: "e.g. .myide/skills",
@@ -105,8 +115,11 @@ export default {
   uninstallModal: {
     title: "Confirm uninstall",
     hint: "This will remove the directory or symlink. This cannot be undone.",
+    deleteTitle: "Confirm local skill deletion",
+    deleteHint: "This will remove the selected skills from Skills Manager local storage. This cannot be undone.",
     cancel: "Cancel",
-    confirm: "Uninstall"
+    confirm: "Uninstall",
+    deleteConfirm: "Delete"
   },
   loading: {
     title: "Processing"
@@ -117,6 +130,7 @@ export default {
     installed: "Installed to {ide}",
     installing: "Installing...",
     uninstalling: "Uninstalling...",
+    deleting: "Deleting...",
     importing: "Importing...",
     handled: "Handled {linked} targets, skipped {skipped} targets.",
     imported: "Successfully imported {success} skills, failed {failed}."
@@ -132,6 +146,7 @@ export default {
     scanFailed: "Failed to scan local skills.",
     installFailed: "Installation failed.",
     uninstallFailed: "Uninstallation failed.",
+    deleteFailed: "Deletion failed.",
     importFailed: "Import failed.",
     invalidPath: "Path must be a relative path under your home directory."
   },

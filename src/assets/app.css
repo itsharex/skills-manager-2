@@ -399,6 +399,12 @@ body {
   color: var(--color-ghost-text);
 }
 
+.ghost.danger {
+  border-color: var(--color-error-border);
+  color: var(--color-error-text);
+  background: var(--color-error-bg);
+}
+
 .more {
   display: flex;
   justify-content: center;

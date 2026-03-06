@@ -28,18 +28,20 @@ defineEmits<{
 <template>
   <section class="panel">
     <div class="panel-title">{{ t("ide.title") }}</div>
-    <div class="row">
-      <div class="select">
-        <select
-          :value="selectedIdeFilter"
-          @change="$emit('update:selectedIdeFilter', ($event.target as HTMLSelectElement).value)"
-        >
-          <option v-for="option in ideOptions" :key="option.id" :value="option.label">
-            {{ option.label }}
-          </option>
-        </select>
-      </div>
+    <div class="panel-summary">
+      <span>{{ t("ide.total", { count: filteredIdeSkills.length }) }}</span>
       <div class="hint">{{ t("ide.switchHint") }}</div>
+    </div>
+    <div class="ide-filter-grid">
+      <button
+        v-for="option in ideOptions"
+        :key="option.id"
+        class="ghost ide-filter-btn"
+        :class="{ active: selectedIdeFilter === option.label }"
+        @click="$emit('update:selectedIdeFilter', option.label)"
+      >
+        {{ option.label }}
+      </button>
     </div>
     <div class="hint">{{ t("ide.addHint") }}</div>
     <div class="row">
@@ -67,10 +69,10 @@ defineEmits<{
     <div v-if="localLoading" class="hint">{{ t("ide.loading") }}</div>
     <div v-if="!localLoading && filteredIdeSkills.length === 0" class="hint">{{ t("ide.emptyHint") }}</div>
     <div v-if="filteredIdeSkills.length > 0" class="cards">
-      <article v-for="skill in filteredIdeSkills" :key="skill.id" class="card">
+      <article v-for="(skill, index) in filteredIdeSkills" :key="skill.id" class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">{{ skill.name }}</div>
+            <div class="card-title">{{ index + 1 }}. {{ skill.name }}</div>
             <div class="card-meta">
               {{ skill.ide }} · {{ skill.source === "link" ? t("ide.sourceLink") : t("ide.sourceLocal") }}
             </div>
@@ -82,3 +84,28 @@ defineEmits<{
     </div>
   </section>
 </template>
+
+<style scoped>
+.panel-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.ide-filter-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.ide-filter-btn.active {
+  background: var(--color-primary-bg);
+  border-color: var(--color-primary-bg);
+  color: var(--color-primary-text);
+}
+</style>

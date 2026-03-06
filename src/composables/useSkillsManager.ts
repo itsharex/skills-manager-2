@@ -57,15 +57,18 @@ export function useSkillsManager() {
   });
 
   const showInstallModal = ref(false);
-  const installTargetSkill = ref<LocalSkill | null>(null);
+  const installTargetSkills = ref<LocalSkill[]>([]);
   const installTargetIde = ref<string[]>([]);
 
   const showUninstallModal = ref(false);
   const uninstallTargetPath = ref("");
   const uninstallTargetName = ref("");
+  const uninstallTargetPaths = ref<string[]>([]);
+  const uninstallMode = ref<"ide" | "local">("ide");
 
   const busy = ref(false);
   const busyText = ref("");
+  const recentTaskStatus = ref<Record<string, "download" | "update">>({});
 
   const hasMore = computed(() => results.value.length < total.value);
   const localSkillNameSet = computed(() => {
@@ -238,14 +241,26 @@ export function useSkillsManager() {
           }
         });
         task.status = 'done';
+        recentTaskStatus.value = {
+          ...recentTaskStatus.value,
+          [task.id]: task.action
+        };
+        toast.success(
+          task.action === "update"
+            ? t("messages.updated", { path: task.name })
+            : t("messages.downloaded", { path: task.name })
+        );
         // Remove completed task after a short delay
         const timerId = window.setTimeout(() => {
           downloadQueue.value = downloadQueue.value.filter(t => t.id !== task.id);
+          const nextStatus = { ...recentTaskStatus.value };
+          delete nextStatus[task.id];
+          recentTaskStatus.value = nextStatus;
           void scanLocalSkills(); // Properly handle async
           // Clean up timer to prevent memory leaks
           const index = timers.indexOf(timerId);
           if (index > -1) timers.splice(index, 1);
-        }, 1500);
+        }, 2500);
         timers.push(timerId);
       } catch (err) {
         task.status = 'error';
@@ -325,8 +340,8 @@ export function useSkillsManager() {
     return result;
   }
 
-  function openInstallModal(skill: LocalSkill) {
-    installTargetSkill.value = skill;
+  function openInstallModal(skill: LocalSkill | LocalSkill[]) {
+    installTargetSkills.value = Array.isArray(skill) ? skill : [skill];
     const lastTargets = loadLastInstallTargets();
     const available = new Set(ideOptions.value.map((item) => item.label));
     const nextTargets = lastTargets.filter((label) => available.has(label));
@@ -340,28 +355,29 @@ export function useSkillsManager() {
   }
 
   async function confirmInstallToIde() {
-    if (!installTargetSkill.value || installTargetIde.value.length === 0) {
+    if (installTargetSkills.value.length === 0 || installTargetIde.value.length === 0) {
       toast.error(t("errors.selectAtLeastOne"));
       return;
     }
     if (installingId.value) return;
-    installingId.value = installTargetSkill.value.id;
+    installingId.value = installTargetSkills.value.length === 1 ? installTargetSkills.value[0].id : "__batch__";
     busy.value = true;
     busyText.value = t("messages.installing");
 
     try {
       let totalLinked = 0;
       let totalSkipped = 0;
-
-      for (const label of installTargetIde.value) {
-        const result = await linkSkillInternal(installTargetSkill.value, label, true, true);
-        totalLinked += result.linked.length;
-        totalSkipped += result.skipped.length;
+      for (const skill of installTargetSkills.value) {
+        for (const label of installTargetIde.value) {
+          const result = await linkSkillInternal(skill, label, true, true);
+          totalLinked += result.linked.length;
+          totalSkipped += result.skipped.length;
+        }
       }
       toast.success(t("messages.handled", { linked: totalLinked, skipped: totalSkipped }));
       await scanLocalSkills();
       showInstallModal.value = false;
-      installTargetSkill.value = null;
+      installTargetSkills.value = [];
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("errors.installFailed"));
     } finally {
@@ -373,37 +389,61 @@ export function useSkillsManager() {
 
   function closeInstallModal() {
     showInstallModal.value = false;
-    installTargetSkill.value = null;
+    installTargetSkills.value = [];
   }
 
   function openUninstallModal(targetPath: string) {
+    uninstallMode.value = "ide";
     uninstallTargetPath.value = targetPath;
+    uninstallTargetPaths.value = [targetPath];
     uninstallTargetName.value = targetPath.split("/").pop() || targetPath;
+    showUninstallModal.value = true;
+  }
+
+  function openDeleteLocalModal(targets: LocalSkill[]) {
+    uninstallMode.value = "local";
+    uninstallTargetPath.value = "";
+    uninstallTargetPaths.value = targets.map((skill) => skill.path);
+    uninstallTargetName.value =
+      targets.length === 1 ? targets[0].name : t("local.deleteSelectedCount", { count: targets.length });
     showUninstallModal.value = true;
   }
 
   async function confirmUninstall() {
     busy.value = true;
-    busyText.value = t("messages.uninstalling");
+    busyText.value = uninstallMode.value === "local" ? t("messages.deleting") : t("messages.uninstalling");
     try {
-      const message = (await invoke("uninstall_skill", {
-        request: {
-          targetPath: uninstallTargetPath.value,
-          projectDir: null,
-          ideDirs: ideOptions.value.map((item) => ({
-            label: item.label,
-            relativeDir: item.globalDir
-          }))
-        }
-      })) as string;
+      const message = uninstallMode.value === "local"
+        ? ((await invoke("delete_local_skills", {
+            request: {
+              targetPaths: uninstallTargetPaths.value
+            }
+          })) as string)
+        : ((await invoke("uninstall_skill", {
+            request: {
+              targetPath: uninstallTargetPath.value,
+              projectDir: null,
+              ideDirs: ideOptions.value.map((item) => ({
+                label: item.label,
+                relativeDir: item.globalDir
+              }))
+            }
+          })) as string);
       toast.success(message);
       await scanLocalSkills();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("errors.uninstallFailed"));
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : uninstallMode.value === "local"
+            ? t("errors.deleteFailed")
+            : t("errors.uninstallFailed")
+      );
     } finally {
       showUninstallModal.value = false;
       uninstallTargetPath.value = "";
       uninstallTargetName.value = "";
+      uninstallTargetPaths.value = [];
       busy.value = false;
       busyText.value = "";
     }
@@ -413,6 +453,7 @@ export function useSkillsManager() {
     showUninstallModal.value = false;
     uninstallTargetPath.value = "";
     uninstallTargetName.value = "";
+    uninstallTargetPaths.value = [];
   }
 
   async function importLocalSkill() {
@@ -507,6 +548,8 @@ export function useSkillsManager() {
     marketStatuses,
     enabledMarkets,
     downloadQueue,
+    uninstallMode,
+    recentTaskStatus,
 
     // Actions
     refreshIdeOptions,
@@ -522,6 +565,7 @@ export function useSkillsManager() {
     confirmInstallToIde,
     closeInstallModal,
     openUninstallModal,
+    openDeleteLocalModal,
     confirmUninstall,
     cancelUninstall,
     importLocalSkill,

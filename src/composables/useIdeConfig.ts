@@ -2,6 +2,16 @@ import { computed, ref } from "vue";
 import type { IdeOption } from "./types";
 import { defaultIdeOptions, STORAGE_KEYS } from "./constants";
 
+function isSafeRelativePath(input: string): boolean {
+  const trimmed = input.trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith("/") || /^[A-Za-z]:/i.test(trimmed) || trimmed.startsWith("\\")) {
+    return false;
+  }
+  const parts = trimmed.split(/[\\/]+/);
+  return parts.every((part) => part !== ".." && part !== "");
+}
+
 /**
  * Load IDE options from localStorage
  */
@@ -77,6 +87,10 @@ export function useIdeConfig() {
     const dir = customIdeDir.value.trim();
     if (!name || !dir) {
       onError(t("errors.fillIde"));
+      return false;
+    }
+    if (!isSafeRelativePath(dir)) {
+      onError(t("errors.invalidPath"));
       return false;
     }
     const normalizedName = name.toLowerCase();

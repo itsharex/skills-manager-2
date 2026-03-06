@@ -1,6 +1,6 @@
 use crate::types::{
-    IdeSkill, ImportRequest, InstallResult, LinkRequest, LocalScanRequest, LocalSkill,
-    Overview, UninstallRequest,
+    DeleteLocalSkillRequest, IdeSkill, ImportRequest, InstallResult, LinkRequest,
+    LocalScanRequest, LocalSkill, Overview, UninstallRequest,
 };
 use crate::utils::download::copy_dir_recursive;
 use crate::utils::path::{normalize_path, resolve_canonical, sanitize_dir_name};
@@ -329,8 +329,13 @@ pub fn scan_overview(request: LocalScanRequest) -> Result<Overview, String> {
         request
             .ide_dirs
             .iter()
-            .map(|item| (item.label.clone(), item.relative_dir.clone()))
-            .collect()
+            .map(|item| {
+                if !is_safe_relative_dir(&item.relative_dir) {
+                    return Err(format!("IDE 目录非法：{}", item.label));
+                }
+                Ok((item.label.clone(), item.relative_dir.clone()))
+            })
+            .collect::<Result<Vec<_>, String>>()?
     };
 
     let mut ide_skills: Vec<IdeSkill> = Vec::new();
@@ -465,4 +470,36 @@ pub fn import_local_skill(request: ImportRequest) -> Result<String, String> {
     copy_dir_recursive(&source_path, &target_dir)?;
 
     Ok(format!("已导入 Skill: {}", name))
+}
+
+#[tauri::command]
+pub fn delete_local_skills(request: DeleteLocalSkillRequest) -> Result<String, String> {
+    let home = dirs::home_dir().ok_or("无法获取用户目录")?;
+    let manager_root = fs::canonicalize(home.join(".skills-manager/skills"))
+        .unwrap_or_else(|_| home.join(".skills-manager/skills"));
+
+    if request.target_paths.is_empty() {
+        return Err("未提供待删除的 Skill".to_string());
+    }
+
+    let mut deleted = 0usize;
+
+    for raw_path in request.target_paths {
+        let target = PathBuf::from(&raw_path);
+        let canonical = fs::canonicalize(&target).map_err(|_| "目标 Skill 不存在".to_string())?;
+        if !canonical.starts_with(&manager_root) {
+            return Err("仅允许删除 Skills Manager 本地 Skill".to_string());
+        }
+        if canonical == manager_root {
+            return Err("不允许删除 Skills 根目录".to_string());
+        }
+        if !canonical.join("SKILL.md").exists() {
+            return Err("目标目录缺少 SKILL.md，已拒绝删除".to_string());
+        }
+
+        fs::remove_dir_all(&canonical).map_err(|err| err.to_string())?;
+        deleted += 1;
+    }
+
+    Ok(format!("已删除 {} 个 Skill", deleted))
 }

@@ -77,6 +77,7 @@ const {
   installTargetIde,
   showUninstallModal,
   uninstallTargetName,
+  uninstallMode,
   busy,
   busyText,
   hasMore,
@@ -90,6 +91,7 @@ const {
   addCustomIde,
   removeCustomIde,
   openUninstallModal,
+  openDeleteLocalModal,
   confirmInstallToIde,
   closeInstallModal,
   confirmUninstall,
@@ -100,6 +102,7 @@ const {
   enabledMarkets,
   saveMarketConfigs,
   downloadQueue,
+  recentTaskStatus,
   retryDownload,
   removeFromQueue
 } = useSkillsManager();
@@ -183,7 +186,10 @@ const { updateAvailable, checkOnStartup } = useUpdateStore();
           :local-loading="localLoading"
           :installing-id="installingId"
           :download-queue="downloadQueue"
+          :ide-options="ideOptions"
           @install="openInstallModal"
+          @install-many="openInstallModal"
+          @delete-local="openDeleteLocalModal"
           @refresh="scanLocalSkills"
           @import="importLocalSkill"
           @retry-download="retryDownload"
@@ -204,6 +210,7 @@ const { updateAvailable, checkOnStartup } = useUpdateStore();
           :market-statuses="marketStatuses"
           :enabled-markets="enabledMarkets"
           :download-queue="downloadQueue"
+          :recent-task-status="recentTaskStatus"
           @search="searchMarketplace(true)"
           @refresh="searchMarketplace(true, true)"
           @loadMore="searchMarketplace(false)"
@@ -248,6 +255,7 @@ const { updateAvailable, checkOnStartup } = useUpdateStore();
     <UninstallModal
       :visible="showUninstallModal"
       :target-name="uninstallTargetName"
+      :mode="uninstallMode"
       @confirm="confirmUninstall"
       @cancel="cancelUninstall"
     />

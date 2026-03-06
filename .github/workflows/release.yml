@@ -57,7 +57,7 @@ jobs:
 
       - name: Sync Cargo version
         run: |
-          node -e "const fs=require('fs');const pkg=require('./package.json');const path='src-tauri/Cargo.toml';const content=fs.readFileSync(path,'utf8').replace(/^version = \".*\"$/m, `version = \"${pkg.version}\"`);fs.writeFileSync(path, content);"
+          node -e 'const fs=require("fs");const pkg=require("./package.json");const path="src-tauri/Cargo.toml";const nextVersion=`version = "${pkg.version}"`;const content=fs.readFileSync(path,"utf8").replace(/^version = ".*"$/m, nextVersion);fs.writeFileSync(path, content);'
 
       - name: Commit and tag
         run: |

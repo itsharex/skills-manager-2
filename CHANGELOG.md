@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.10](https://github.com/Rito-w/skills-manager/compare/v0.3.9...v0.3.10) (2026-03-06)
+
+
+### Bug Fixes
+
+* aggregate updater manifest across platforms ([f466783](https://github.com/Rito-w/skills-manager/commit/f466783eaed05ba1c702be5a0daf18363f127058))
+* **updater:** surface silent update installation errors to user UI ([aa275d1](https://github.com/Rito-w/skills-manager/commit/aa275d1bb7898030662c0dc6434e21645838165f))
+
 ### [0.3.9](https://github.com/Rito-w/skills-manager/compare/v0.3.8...v0.3.9) (2026-03-06)
 
 

@@ -235,12 +235,14 @@ fn create_junction_dir(target: &Path, link: &Path) -> Result<(), String> {
 pub fn link_local_skill(request: LinkRequest) -> Result<InstallResult, String> {
     let home = dirs::home_dir().ok_or("无法获取用户目录")?;
     let normalized_home = normalize_path(&home);
+    let manager_root_raw = home.join(".skills-manager/skills");
+    let manager_root = fs::canonicalize(&manager_root_raw).unwrap_or_else(|_| normalize_path(&manager_root_raw));
 
     let skill_path = PathBuf::from(&request.skill_path);
     let skill_canon =
         fs::canonicalize(&skill_path).map_err(|_| "本地 skill 路径不存在".to_string())?;
-    if !skill_canon.starts_with(&normalized_home) {
-        return Err("本地 skill 路径必须位于用户目录下".to_string());
+    if !skill_canon.starts_with(&manager_root) {
+        return Err("本地 skill 路径必须位于 Skills Manager 本地仓库".to_string());
     }
     let skill_path = skill_canon;
 

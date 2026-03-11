@@ -98,7 +98,7 @@ export default {
     title: "IDE 浏览",
     switchHint: "切换 IDE 查看其技能列表。",
     total: "当前列表 {count}",
-    addHint: "添加自定义 IDE（名称 + 相对路径或绝对路径，支持 WSL 路径如 \\\\wsl$\\Ubuntu\\home\\user\\.claude\\skills）。",
+    addHint: "添加自定义 IDE（名称 + 相对路径或绝对路径）。",
     namePlaceholder: "IDE 名称",
     dirPlaceholder: "例如 .myide/skills",
     addButton: "添加 IDE",
@@ -158,7 +158,7 @@ export default {
     ideExists: "IDE 名称已存在",
     selectValidIde: "请选择有效的 IDE",
     selectAtLeastOne: "请选择至少一个 IDE",
-    invalidPath: "路径必须是相对路径或有效的绝对路径（支持 WSL 路径如 \\\\wsl$\\...）。"
+    invalidPath: "路径必须是相对路径或有效的绝对路径。"
   },
   update: {
     available: "发现新版本: {version}",

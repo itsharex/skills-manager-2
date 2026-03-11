@@ -100,6 +100,7 @@ const {
   importLocalSkill,
   openSkillDirectory,
   adoptIdeSkill,
+  adoptManyIdeSkills,
   marketConfigs,
   marketStatuses,
   enabledMarkets,
@@ -240,6 +241,7 @@ const { updateAvailable, checkOnStartup } = useUpdateStore();
           @remove-custom-ide="removeCustomIde"
           @open-dir="openSkillDirectory"
           @adopt="adoptIdeSkill"
+          @adopt-many="adoptManyIdeSkills"
           @uninstall="openUninstallModal"
           @uninstall-many="openUninstallManyModal"
         />

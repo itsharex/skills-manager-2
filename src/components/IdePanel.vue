@@ -26,6 +26,7 @@ const emit = defineEmits<{
   (e: "uninstallMany", paths: string[]): void;
   (e: "openDir", path: string): void;
   (e: "adopt", skill: IdeSkill): void;
+  (e: "adoptMany", skills: IdeSkill[]): void;
 }>();
 
 const selectedIds = ref<string[]>([]);
@@ -41,6 +42,10 @@ watch(
 
 const selectedSkills = computed(() =>
   props.filteredIdeSkills.filter((skill) => selectedIds.value.includes(skill.id))
+);
+
+const selectedUnmanagedSkills = computed(() =>
+  selectedSkills.value.filter((skill) => !skill.managed)
 );
 
 const allSelected = computed(
@@ -67,6 +72,11 @@ function toggleSelected(skillId: string, checked: boolean) {
 function uninstallSelected() {
   if (selectedSkills.value.length === 0) return;
   emit("uninstallMany", selectedSkills.value.map((skill) => skill.path));
+}
+
+function adoptSelected() {
+  if (selectedUnmanagedSkills.value.length === 0) return;
+  emit("adoptMany", selectedUnmanagedSkills.value);
 }
 </script>
 
@@ -122,6 +132,13 @@ function uninstallSelected() {
 
     <div class="actions">
       <div class="buttons">
+        <button
+          class="primary"
+          :disabled="selectedUnmanagedSkills.length === 0 || localLoading"
+          @click="adoptSelected"
+        >
+          {{ t("ide.adoptSelected", { count: selectedUnmanagedSkills.length }) }}
+        </button>
         <button
           class="ghost danger"
           :disabled="selectedSkills.length === 0 || localLoading"

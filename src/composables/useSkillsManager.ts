@@ -577,6 +577,40 @@ export function useSkillsManager() {
     }
   }
 
+  async function adoptManyIdeSkills(skills: IdeSkill[]) {
+    if (skills.length === 0) return;
+    busy.value = true;
+    busyText.value = t("messages.adopting");
+    let successCount = 0;
+    let failCount = 0;
+    try {
+      for (const skill of skills) {
+        try {
+          await invoke("adopt_ide_skill", {
+            request: {
+              targetPath: skill.path,
+              ideLabel: skill.ide
+            }
+          });
+          successCount++;
+        } catch {
+          failCount++;
+        }
+      }
+      if (successCount > 0 && failCount === 0) {
+        toast.success(t("messages.adoptedCount", { count: successCount }));
+      } else if (successCount > 0 && failCount > 0) {
+        toast.success(t("messages.adoptedPartial", { success: successCount, failed: failCount }));
+      } else {
+        toast.error(t("errors.adoptFailed"));
+      }
+      await scanLocalSkills();
+    } finally {
+      busy.value = false;
+      busyText.value = "";
+    }
+  }
+
   onMounted(() => {
     refreshIdeOptions();
     loadMarketConfigs();
@@ -640,6 +674,7 @@ export function useSkillsManager() {
     importLocalSkill,
     openSkillDirectory,
     adoptIdeSkill,
+    adoptManyIdeSkills,
     addToDownloadQueue,
     removeFromQueue,
     retryDownload

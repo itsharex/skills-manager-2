@@ -113,7 +113,8 @@ export default {
     adopt: "Manage Centrally",
     uninstall: "Uninstall",
     uninstallSelected: "Uninstall selected ({count})",
-    uninstallSelectedCount: "{count} skills selected"
+    uninstallSelectedCount: "{count} skills selected",
+    adoptSelected: "Manage selected ({count})"
   },
   installModal: {
     title: "Select target IDEs",
@@ -142,6 +143,8 @@ export default {
     uninstalling: "Uninstalling...",
     uninstalledCount: "Uninstalled {count} skills",
     uninstalledPartial: "Successfully uninstalled {success}, failed {failed}",
+    adoptedCount: "Managed {count} skills",
+    adoptedPartial: "Successfully managed {success}, failed {failed}",
     deleting: "Deleting...",
     importing: "Importing...",
     adopting: "Adding to central management...",

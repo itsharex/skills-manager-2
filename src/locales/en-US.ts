@@ -98,7 +98,7 @@ export default {
     title: "IDE Browser",
     switchHint: "Switch IDE to view its skills.",
     total: "{count} skills",
-    addHint: "Add custom IDE (name + relative skills path).",
+    addHint: "Add custom IDE (name + relative or absolute path, supports WSL paths like \\\\wsl$\\Ubuntu\\home\\user\\.claude\\skills).",
     namePlaceholder: "IDE name",
     dirPlaceholder: "e.g. .myide/skills",
     addButton: "Add IDE",
@@ -158,7 +158,7 @@ export default {
     importFailed: "Import failed.",
     openDirFailed: "Failed to open folder.",
     adoptFailed: "Failed to add to central management.",
-    invalidPath: "Path must be a relative path under your home directory."
+    invalidPath: "Path must be a relative path or a valid absolute path (including WSL paths like \\\\wsl$\\...)."
   },
   update: {
     available: "New version available: {version}",

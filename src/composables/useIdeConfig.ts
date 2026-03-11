@@ -1,7 +1,7 @@
 import { computed, ref } from "vue";
 import type { IdeOption } from "./types";
 import { defaultIdeOptions, STORAGE_KEYS } from "./constants";
-import { isSafeRelativePath } from "./utils";
+import { isValidIdePath } from "./utils";
 
 /**
  * Load IDE options from localStorage
@@ -80,7 +80,7 @@ export function useIdeConfig() {
       onError(t("errors.fillIde"));
       return false;
     }
-    if (!isSafeRelativePath(dir)) {
+    if (!isValidIdePath(dir)) {
       onError(t("errors.invalidPath"));
       return false;
     }

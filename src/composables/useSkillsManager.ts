@@ -10,7 +10,7 @@ import type {
 } from "./types";
 import { useIdeConfig } from "./useIdeConfig";
 import { useMarketConfig } from "./useMarketConfig";
-import { isSafeRelativePath, getErrorMessage } from "./utils";
+import { isSafeRelativePath, getErrorMessage, isSafeAbsolutePath } from "./utils";
 
 export function useSkillsManager() {
   const { t } = useI18n();
@@ -111,13 +111,24 @@ export function useSkillsManager() {
   }
 
   async function buildLinkTargets(targetLabel: string): Promise<LinkTarget[]> {
-    const home = await homeDir();
     const target = ideOptions.value.find((option) => option.label === targetLabel);
-    if (!target || !isSafeRelativePath(target.globalDir)) return [];
+    if (!target) return [];
+
+    const dir = target.globalDir;
+
+    // Absolute path: use directly
+    if (isSafeAbsolutePath(dir)) {
+      return [{ name: target.label, path: dir }];
+    }
+
+    // Relative path: join with home directory
+    if (!isSafeRelativePath(dir)) return [];
+
+    const home = await homeDir();
     return [
       {
         name: target.label,
-        path: await join(home, target.globalDir)
+        path: await join(home, dir)
       }
     ];
   }

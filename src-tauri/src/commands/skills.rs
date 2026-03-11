@@ -4,7 +4,7 @@ use crate::types::{
 };
 use crate::utils::download::copy_dir_recursive;
 use crate::utils::path::{normalize_path, resolve_canonical, sanitize_dir_name};
-use crate::utils::security::is_safe_relative_dir;
+use crate::utils::security::{is_absolute_ide_path, is_valid_ide_path};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -357,31 +357,35 @@ pub fn scan_overview(request: LocalScanRequest) -> Result<Overview, String> {
     let manager_dir = home.join(".skills-manager/skills");
     let mut manager_skills = collect_skills_from_dir(&manager_dir, "manager", None);
 
-    let ide_dirs = if request.ide_dirs.is_empty() {
+    // Resolve IDE directories: absolute paths are used directly, relative paths are joined with home
+    let ide_dirs: Vec<(String, PathBuf)> = if request.ide_dirs.is_empty() {
         vec![
-            (
-                "Antigravity".to_string(),
-                ".gemini/antigravity/skills".to_string(),
-            ),
-            ("Claude".to_string(), ".claude/skills".to_string()),
-            ("CodeBuddy".to_string(), ".codebuddy/skills".to_string()),
-            ("Codex".to_string(), ".codex/skills".to_string()),
-            ("Cursor".to_string(), ".cursor/skills".to_string()),
-            ("Kiro".to_string(), ".kiro/skills".to_string()),
-            ("Qoder".to_string(), ".qoder/skills".to_string()),
-            ("Trae".to_string(), ".trae/skills".to_string()),
-            ("VSCode".to_string(), ".github/skills".to_string()),
-            ("Windsurf".to_string(), ".windsurf/skills".to_string()),
+            ("Antigravity".to_string(), home.join(".gemini/antigravity/skills")),
+            ("Claude".to_string(), home.join(".claude/skills")),
+            ("CodeBuddy".to_string(), home.join(".codebuddy/skills")),
+            ("Codex".to_string(), home.join(".codex/skills")),
+            ("Cursor".to_string(), home.join(".cursor/skills")),
+            ("Kiro".to_string(), home.join(".kiro/skills")),
+            ("Qoder".to_string(), home.join(".qoder/skills")),
+            ("Trae".to_string(), home.join(".trae/skills")),
+            ("VSCode".to_string(), home.join(".github/skills")),
+            ("Windsurf".to_string(), home.join(".windsurf/skills")),
         ]
     } else {
         request
             .ide_dirs
             .iter()
             .map(|item| {
-                if !is_safe_relative_dir(&item.relative_dir) {
+                if !is_valid_ide_path(&item.relative_dir) {
                     return Err(format!("Invalid IDE directory: {}", item.label));
                 }
-                Ok((item.label.clone(), item.relative_dir.clone()))
+                // Absolute path: use directly
+                if is_absolute_ide_path(&item.relative_dir) {
+                    Ok((item.label.clone(), PathBuf::from(&item.relative_dir)))
+                } else {
+                    // Relative path: join with home directory
+                    Ok((item.label.clone(), home.join(&item.relative_dir)))
+                }
             })
             .collect::<Result<Vec<_>, String>>()?
     };
@@ -395,10 +399,9 @@ pub fn scan_overview(request: LocalScanRequest) -> Result<Overview, String> {
         }
     }
 
-    for (label, rel) in &ide_dirs {
-        let dir = home.join(rel);
+    for (label, dir) in &ide_dirs {
         ide_skills.extend(collect_ide_skills(
-            &dir,
+            dir,
             label,
             &manager_map,
             &mut manager_skills,
@@ -407,10 +410,16 @@ pub fn scan_overview(request: LocalScanRequest) -> Result<Overview, String> {
 
     if let Some(project) = request.project_dir {
         let base = PathBuf::from(project);
-        for (label, rel) in &ide_dirs {
-            let dir = base.join(rel);
+        for (label, dir) in &ide_dirs {
+            // For absolute paths, also check the same path under project
+            // For relative paths, join with project directory
+            let project_dir = if dir.is_absolute() {
+                dir.clone()
+            } else {
+                base.join(dir)
+            };
             ide_skills.extend(collect_ide_skills(
-                &dir,
+                &project_dir,
                 label,
                 &manager_map,
                 &mut manager_skills,
@@ -429,7 +438,7 @@ pub fn uninstall_skill(request: UninstallRequest) -> Result<String, String> {
     let home = dirs::home_dir().ok_or("Unable to determine the home directory")?;
     let mut allowed_roots = vec![home.join(".skills-manager/skills")];
 
-    let ide_dirs = if request.ide_dirs.is_empty() {
+    let ide_dirs: Vec<String> = if request.ide_dirs.is_empty() {
         vec![
             ".gemini/antigravity/skills".to_string(),
             ".claude/skills".to_string(),
@@ -450,11 +459,17 @@ pub fn uninstall_skill(request: UninstallRequest) -> Result<String, String> {
             .collect()
     };
 
-    for rel in ide_dirs {
-        if !is_safe_relative_dir(&rel) {
+    for dir in &ide_dirs {
+        if !is_valid_ide_path(dir) {
             return Err("Invalid IDE directory".to_string());
         }
-        allowed_roots.push(home.join(rel));
+        // Absolute path: add directly to allowed roots
+        if is_absolute_ide_path(dir) {
+            allowed_roots.push(PathBuf::from(dir));
+        } else {
+            // Relative path: join with home directory
+            allowed_roots.push(home.join(dir));
+        }
     }
     if let Some(project) = request.project_dir {
         let base = PathBuf::from(project);

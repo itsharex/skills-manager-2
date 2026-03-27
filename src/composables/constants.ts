@@ -40,6 +40,7 @@ export const CACHE_TTL_MS = 10 * 60 * 1000;
 export const defaultMarketStatuses: MarketStatus[] = [
   { id: "claude-plugins", name: "Claude Plugins", status: "online" },
   { id: "skillsllm", name: "SkillsLLM", status: "online" },
+  { id: "skills-hub", name: "Skills Hub", status: "online" },
   { id: "skillsmp", name: "SkillsMP", status: "needs_key" }
 ];
 
@@ -49,6 +50,7 @@ export const defaultMarketStatuses: MarketStatus[] = [
 export const defaultEnabledMarkets: Record<string, boolean> = {
   "claude-plugins": true,
   "skillsllm": true,
+  "skills-hub": true,
   "skillsmp": false // Disabled by default until API key is provided
 };
 

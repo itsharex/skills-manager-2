@@ -112,13 +112,92 @@ export function getErrorMessage(err: unknown, fallback: string): string {
 }
 
 /**
- * Normalizes skill names and paths for fuzzy matching across marketplaces/local installs.
+ * Normalizes a skill name for stable matching across sources and local paths
  */
 export function normalizeSkillName(input: string): string {
-  return input
+  return decodeURIComponent(input)
     .trim()
     .toLowerCase()
+    .replace(/\.git$/i, "")
+    .replace(/\.zip$/i, "")
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
+    .replace(/^-+|-+$/g, "");
+}
+
+export type ManualSkillSourceKind = "github_repo" | "github_tree" | "zip";
+
+export type ManualSkillSource = {
+  kind: ManualSkillSourceKind;
+  normalizedUrl: string;
+  inferredName: string;
+};
+
+function normalizeManualSkillName(name: string): string {
+  return decodeURIComponent(name)
+    .trim()
+    .replace(/\.git$/i, "")
+    .replace(/\.zip$/i, "");
+}
+
+function sanitizeUrl(url: string): URL | null {
+  try {
+    return new URL(url.trim());
+  } catch {
+    return null;
+  }
+}
+
+export function parseManualSkillSource(input: string): ManualSkillSource | null {
+  const url = sanitizeUrl(input);
+  if (!url || !/^https?:$/.test(url.protocol)) return null;
+
+  const rawPath = url.pathname.replace(/\/+$/, "");
+  const segments = rawPath.split("/").filter(Boolean);
+
+  if (url.hostname === "github.com") {
+    if (segments.length < 2) return null;
+    const repo = normalizeManualSkillName(segments[1]);
+    if (!repo) return null;
+
+    if (segments.length === 2) {
+      return {
+        kind: "github_repo",
+        normalizedUrl: `${url.origin}/${segments[0]}/${repo}`,
+        inferredName: repo
+      };
+    }
+
+    if (segments[2] === "tree" && segments.length >= 5) {
+      const subpathName = normalizeManualSkillName(segments[segments.length - 1]);
+      if (!subpathName) return null;
+      return {
+        kind: "github_tree",
+        normalizedUrl: `${url.origin}/${segments[0]}/${repo}/tree/${segments.slice(3).join("/")}`,
+        inferredName: subpathName
+      };
+    }
+
+    if (segments[2] === "blob") {
+      return null;
+    }
+
+    return {
+      kind: "github_repo",
+      normalizedUrl: `${url.origin}/${segments[0]}/${repo}`,
+      inferredName: repo
+    };
+  }
+
+  const lowerPath = rawPath.toLowerCase();
+  if (lowerPath.endsWith(".zip")) {
+    const fileName = normalizeManualSkillName(segments[segments.length - 1] ?? "");
+    if (!fileName) return null;
+    return {
+      kind: "zip",
+      normalizedUrl: url.toString(),
+      inferredName: fileName
+    };
+  }
+
+  return null;
 }

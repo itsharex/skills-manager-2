@@ -98,6 +98,11 @@ export type DownloadTask = {
 export type MarketSortMode = "default" | "stars_desc" | "installs_desc";
 
 /**
+ * Market result sorting mode
+ */
+export type MarketSortMode = "default" | "stars_desc" | "installs_desc";
+
+/**
  * IDE directory in a project
  */
 export type ProjectIdeDir = {

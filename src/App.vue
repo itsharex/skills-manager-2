@@ -3,6 +3,7 @@ import { onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { i18n, supportedLocales, type SupportedLocale } from "./i18n";
 import { useSkillsManager } from "./composables/useSkillsManager";
+import type { MarketSortMode } from "./composables/types";
 import { useUpdateStore } from "./composables/useUpdateStore";
 import { useProjectConfig } from "./composables/useProjectConfig";
 import { useToast } from "./composables/useToast";
@@ -17,7 +18,6 @@ import LoadingOverlay from "./components/LoadingOverlay.vue";
 import Toast from "./components/Toast.vue";
 import ProjectAddModal from "./components/ProjectAddModal.vue";
 import ProjectConfigModal from "./components/ProjectConfigModal.vue";
-import type { MarketSortMode } from "./composables/types";
 
 const { t } = useI18n();
 
@@ -74,8 +74,8 @@ const {
   activeTab,
   query,
   sortedResults,
-  loading,
   marketSortMode,
+  loading,
   installingId,
   updatingId,
   localSkills,
@@ -97,6 +97,7 @@ const {
   searchMarketplace,
   downloadSkill,
   updateSkill,
+  addManualSkill,
   scanLocalSkills,
   openInstallModal,
   addCustomIde,
@@ -144,6 +145,10 @@ const {
 const showProjectAddModal = ref(false);
 const showProjectConfigModal = ref(false);
 const configuringProject = ref<typeof selectedProject.value>(null);
+
+function handleUpdateMarketSortMode(next: MarketSortMode) {
+  marketSortMode.value = next;
+}
 
 async function handleAddProject() {
   showProjectAddModal.value = true;
@@ -299,9 +304,9 @@ async function handleLinkSkills(projectId: string) {
       <template v-else-if="activeTab === 'market'">
         <MarketPanel
           v-model:query="query"
-          :sort-mode="marketSortMode"
           :loading="loading"
           :results="sortedResults"
+          :sort-mode="marketSortMode"
           :has-more="hasMore"
           :installing-id="installingId"
           :updating-id="updatingId"
@@ -311,12 +316,13 @@ async function handleLinkSkills(projectId: string) {
           :enabled-markets="enabledMarkets"
           :download-queue="downloadQueue"
           :recent-task-status="recentTaskStatus"
-          @update:sort-mode="marketSortMode = $event as MarketSortMode"
           @search="searchMarketplace(true)"
           @refresh="searchMarketplace(true, true)"
           @loadMore="searchMarketplace(false)"
           @download="downloadSkill"
           @update="updateSkill"
+          @manual-add="({ sourceUrl, name }) => addManualSkill(sourceUrl, name)"
+          @update:sort-mode="handleUpdateMarketSortMode"
           @saveConfigs="saveMarketConfigs"
         />
       </template>

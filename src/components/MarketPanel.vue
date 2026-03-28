@@ -1,18 +1,19 @@
 <script setup lang="ts">
-import type { RemoteSkill, MarketStatus, DownloadTask, MarketSortMode } from "../composables/types";
+import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { ref, computed } from "vue";
-import MarketSettingsModal from "./MarketSettingsModal.vue";
+import type { RemoteSkill, MarketStatus, DownloadTask, MarketSortMode } from "../composables/types";
 import { normalizeSkillName } from "../composables/utils";
+import MarketSettingsModal from "./MarketSettingsModal.vue";
+import ManualAddSkillModal from "./ManualAddSkillModal.vue";
 
 const { t } = useI18n();
 
 const props = defineProps<{
   query: string;
-  sortMode: MarketSortMode;
   loading: boolean;
   results: RemoteSkill[];
   hasMore: boolean;
+  sortMode: MarketSortMode;
   installingId: string | null;
   updatingId: string | null;
   localSkillNameSet: Set<string>;
@@ -23,11 +24,11 @@ const props = defineProps<{
   recentTaskStatus: Record<string, "download" | "update">;
 }>();
 
-const downloadingIds = computed(() => new Set(props.downloadQueue.map(t => t.id)));
+const downloadingIds = computed(() => new Set(props.downloadQueue.map((task) => task.id)));
 const actionState = (skill: RemoteSkill) => props.recentTaskStatus[skill.id] ?? null;
 const isInstalled = (skill: RemoteSkill) => props.localSkillNameSet.has(normalizeSkillName(skill.name));
 
-defineEmits<{
+const emit = defineEmits<{
   (e: "update:query", value: string): void;
   (e: "update:sortMode", value: MarketSortMode): void;
   (e: "search"): void;
@@ -35,10 +36,16 @@ defineEmits<{
   (e: "loadMore"): void;
   (e: "download", skill: RemoteSkill): void;
   (e: "update", skill: RemoteSkill): void;
+  (e: "manualAdd", payload: { sourceUrl: string; name: string }): void;
   (e: "saveConfigs", configs: Record<string, string>, enabled: Record<string, boolean>): void;
 }>();
 
 const showSettings = ref(false);
+const showManualAdd = ref(false);
+
+function handleSortModeChange(event: Event) {
+  emit("update:sortMode", (event.target as HTMLSelectElement).value as MarketSortMode);
+}
 </script>
 
 <template>
@@ -49,7 +56,7 @@ const showSettings = ref(false);
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
     </div>
-    
+
     <div class="search-row">
       <input
         :value="query"
@@ -65,23 +72,26 @@ const showSettings = ref(false);
       <button class="ghost" :disabled="loading" @click="$emit('refresh')">
         {{ loading ? t("market.refreshing") : t("market.refresh") }}
       </button>
+      <button class="ghost" :disabled="loading" @click="showManualAdd = true">
+        {{ t("market.manualAdd") }}
+      </button>
     </div>
+
     <div class="market-toolbar">
       <label class="sort-control">
         <span>{{ t("market.sortLabel") }}</span>
         <select
           class="input sort-select"
           :value="sortMode"
-          @change="$emit('update:sortMode', ($event.target as HTMLSelectElement).value as MarketSortMode)"
+          :title="t('market.sortHint')"
+          @change="handleSortModeChange"
         >
           <option value="default">{{ t("market.sortDefault") }}</option>
           <option value="stars_desc">{{ t("market.sortStars") }}</option>
           <option value="installs_desc">{{ t("market.sortInstalls") }}</option>
         </select>
       </label>
-      <div class="hint">{{ t("market.sortHint") }}</div>
     </div>
-
   </section>
 
   <section class="panel">
@@ -99,7 +109,12 @@ const showSettings = ref(false);
             </div>
           </div>
           <template v-if="isInstalled(skill)">
-            <button class="ghost" :disabled="downloadingIds.has(skill.id) || actionState(skill) === 'update' || !skill.sourceUrl || !skill.sourceUrl.trim()" :title="(!skill.sourceUrl || !skill.sourceUrl.trim()) ? t('market.unavailable') : ''" @click="$emit('update', skill)">
+            <button
+              class="ghost"
+              :disabled="downloadingIds.has(skill.id) || actionState(skill) === 'update' || !skill.sourceUrl || !skill.sourceUrl.trim()"
+              :title="(!skill.sourceUrl || !skill.sourceUrl.trim()) ? t('market.unavailable') : ''"
+              @click="$emit('update', skill)"
+            >
               {{
                 (!skill.sourceUrl || !skill.sourceUrl.trim())
                   ? t("market.unavailable")
@@ -112,9 +127,9 @@ const showSettings = ref(false);
             </button>
           </template>
           <template v-else>
-            <button 
-              class="primary" 
-              :disabled="downloadingIds.has(skill.id) || actionState(skill) === 'download' || !skill.sourceUrl || !skill.sourceUrl.trim()" 
+            <button
+              class="primary"
+              :disabled="downloadingIds.has(skill.id) || actionState(skill) === 'download' || !skill.sourceUrl || !skill.sourceUrl.trim()"
               :title="(!skill.sourceUrl || !skill.sourceUrl.trim()) ? t('market.unavailable') : ''"
               @click="$emit('download', skill)"
             >
@@ -142,7 +157,7 @@ const showSettings = ref(false);
       </button>
     </div>
   </section>
-  
+
   <MarketSettingsModal
     :show="showSettings"
     :configs="marketConfigs"
@@ -150,6 +165,12 @@ const showSettings = ref(false);
     :statuses="marketStatuses"
     @close="showSettings = false"
     @save="(configs, enabled) => $emit('saveConfigs', configs, enabled)"
+  />
+
+  <ManualAddSkillModal
+    :show="showManualAdd"
+    @close="showManualAdd = false"
+    @submit="$emit('manualAdd', $event)"
   />
 </template>
 
@@ -170,15 +191,12 @@ const showSettings = ref(false);
 
 .market-toolbar {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+  justify-content: flex-end;
   margin-top: 12px;
-  flex-wrap: wrap;
 }
 
 .sort-control {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   color: var(--color-muted);

@@ -413,6 +413,11 @@ fn should_copy_for_target(target_dir: &Path) -> bool {
 pub fn link_local_skill(request: LinkRequest) -> Result<InstallResult, String> {
     let home = dirs::home_dir().ok_or("Unable to determine the home directory")?;
     let normalized_home = normalize_path(&home);
+    let mut allowed_roots = vec![normalized_home.clone()];
+    if let Some(project_dir) = request.project_dir.as_ref() {
+        let project_root = normalize_path(Path::new(project_dir));
+        allowed_roots.push(project_root);
+    }
     let manager_root_raw = home.join(".skills-manager/skills");
     let manager_root =
         resolve_canonical(&manager_root_raw).unwrap_or_else(|| normalize_path(&manager_root_raw));
@@ -433,9 +438,12 @@ pub fn link_local_skill(request: LinkRequest) -> Result<InstallResult, String> {
     for target in request.link_targets {
         let target_base = PathBuf::from(&target.path);
         let normalized_target = normalize_path(&target_base);
-        if !normalized_target.starts_with(&normalized_home) {
+        if !allowed_roots
+            .iter()
+            .any(|root| normalized_target.starts_with(root))
+        {
             return Err(format!(
-                "Target directory is outside the home directory: {}",
+                "Target directory is outside the allowed directories: {}",
                 target.name
             ));
         }
@@ -444,9 +452,9 @@ pub fn link_local_skill(request: LinkRequest) -> Result<InstallResult, String> {
         // trigger false-positive symlink attack errors.
         let target_canon =
             resolve_canonical(&target_base).unwrap_or_else(|| normalized_target.clone());
-        if !target_canon.starts_with(&normalized_home) {
+        if !allowed_roots.iter().any(|root| target_canon.starts_with(root)) {
             return Err(format!(
-                "Target directory failed the symlink safety check: {}",
+                "Target directory failed the path safety check: {}",
                 target.name
             ));
         }
@@ -658,7 +666,7 @@ pub fn uninstall_skill(request: UninstallRequest) -> Result<String, String> {
         let base = PathBuf::from(project);
         allowed_roots.push(base.join(".codex/skills"));
         allowed_roots.push(base.join(".trae/skills"));
-        allowed_roots.push(base.join(".opencode/skill"));
+        allowed_roots.push(base.join(".opencode/skills"));
         allowed_roots.push(base.join(".skills-manager/skills"));
     }
 
@@ -916,7 +924,7 @@ pub fn scan_project_ide_dirs(request: ProjectScanRequest) -> Result<ProjectScanR
         (".cursor/skills", "Cursor"),
         (".kiro/skills", "Kiro"),
         (".openclaw/skills", "OpenClaw"),
-        (".config/opencode/skills", "OpenCode"),
+        (".opencode/skills", "OpenCode"),
         (".qoder/skills", "Qoder"),
         (".trae/skills", "Trae"),
         (".github/skills", "VSCode"),

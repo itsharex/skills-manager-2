@@ -556,7 +556,7 @@ export function useSkillsManager() {
     skipScan = false,
     suppressToast = false
   ) {
-    const linkTargets = buildProjectLinkTargets(project, ideLabel, ideOptions.value);
+    const linkTargets = buildProjectLinkTargets(project, ideLabel);
     if (linkTargets.length === 0) {
       throw new Error(`${t("errors.selectValidIde")} (${project.name}: ${ideLabel})`);
     }
@@ -564,7 +564,8 @@ export function useSkillsManager() {
       request: {
         skillPath: skill.path,
         skillName: skill.name,
-        linkTargets
+        linkTargets,
+        projectDir: project.path
       }
     })) as InstallResult;
 

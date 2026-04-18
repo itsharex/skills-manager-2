@@ -111,6 +111,7 @@ pub struct LinkRequest {
     pub skill_path: String,
     pub skill_name: String,
     pub link_targets: Vec<LinkTarget>,
+    pub project_dir: Option<String>,
 }
 
 #[derive(Serialize, Debug)]

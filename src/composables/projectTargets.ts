@@ -1,9 +1,9 @@
-import type { IdeOption, LinkTarget, ProjectConfig } from "./types";
+import type { LinkTarget, ProjectConfig } from "./types";
+import { ideDirMappings } from "./constants";
 
 export function buildProjectLinkTargets(
   project: ProjectConfig,
-  ideLabel: string,
-  ideOptions: IdeOption[]
+  ideLabel: string
 ): LinkTarget[] {
   const detectedDir = project.detectedIdeDirs.find((item) => item.label === ideLabel);
   if (detectedDir) {
@@ -11,13 +11,13 @@ export function buildProjectLinkTargets(
     return [{ name: `${ideLabel} (${project.name})`, path: normalizedPath }];
   }
 
-  const target = ideOptions.find((option) => option.label === ideLabel);
-  if (!target) return [];
+  const targetMapping = ideDirMappings.find((option) => option.label === ideLabel);
+  if (!targetMapping) return [];
 
-  const dir = target.globalDir.trim();
+  const dir = targetMapping.path.trim();
   if (!dir || dir.startsWith("/")) {
     return [];
   }
 
-  return [{ name: `${target.label} (${project.name})`, path: `${project.path}/${dir}` }];
+  return [{ name: `${ideLabel} (${project.name})`, path: `${project.path}/${dir}` }];
 }

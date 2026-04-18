@@ -61,7 +61,7 @@ export const ideDirMappings: Array<{ label: string; path: string }> = [
   { label: "Cursor", path: ".cursor/skills" },
   { label: "Kiro", path: ".kiro/skills" },
   { label: "OpenClaw", path: ".openclaw/skills" },
-  { label: "OpenCode", path: ".config/opencode/skills" },
+  { label: "OpenCode", path: ".opencode/skills" },
   { label: "Qoder", path: ".qoder/skills" },
   { label: "Trae", path: ".trae/skills" },
   { label: "VSCode", path: ".github/skills" },
